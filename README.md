@@ -29,6 +29,15 @@ To run tests for this project, type at the console (in this directory):
 # mvn test
 ```
 
+## Deploying
+
+In order to deploy, you will need to have access credentials to [bintray.com](https://bintray.com/).
+To deploy, type at the console (in this directory):
+
+```
+# mvn deploy
+```
+
 ## Contributors
 
 - Matthew Wampler-Doty ⇒ <matthew.wampler.doty@gmail.com>
