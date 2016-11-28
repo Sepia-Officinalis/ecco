@@ -20,10 +20,10 @@ import static sh.cuttlefi.ecco.impl.codec.BaseConvert.baseEncodedStringToByteArr
 import static sh.cuttlefi.ecco.impl.codec.BaseConvert.byteArrayToBaseEncodedString;
 import static sh.cuttlefi.ecco.impl.Utils.*;
 
-public class PublicKey {
+final public class PublicKey {
 
-    public final ECPoint point;
-    public final ECDomainParameters curveParameters;
+    final ECPoint point;
+    final ECDomainParameters curveParameters;
     private final ECDSASigner verifier = new ECDSASigner();
 
     /**
@@ -33,13 +33,13 @@ public class PublicKey {
      * @param point           An elliptic curve point
      * @return Whether this point was valid or not.
      */
-    public static boolean isValidPoint(ECDomainParameters curveParameters, ECPoint point) {
-        BigInteger x = point.getXCoord().toBigInteger();
-        BigInteger y = point.getYCoord().toBigInteger();
-        ECCurve ec = curveParameters.getCurve();
-        BigInteger a = ec.getA().toBigInteger();
-        BigInteger b = ec.getB().toBigInteger();
-        BigInteger p = ec.getField().getCharacteristic();
+    private static boolean isValidPoint(ECDomainParameters curveParameters, ECPoint point) {
+        final BigInteger x = point.getXCoord().toBigInteger();
+        final BigInteger y = point.getYCoord().toBigInteger();
+        final ECCurve ec = curveParameters.getCurve();
+        final BigInteger a = ec.getA().toBigInteger();
+        final BigInteger b = ec.getB().toBigInteger();
+        final BigInteger p = ec.getField().getCharacteristic();
         return x.multiply(x).multiply(x).add(a.multiply(x)).add(b).mod(p)
                 .equals(y.multiply(y).mod(p));
     }
@@ -49,7 +49,7 @@ public class PublicKey {
      *
      * @param curveParameters The parameters of the elliptic curve to use
      * @param point           The point to use as a public key on the elliptic curve
-     * @throws SecurityException
+     * @throws SecurityException A security exception is thrown in the event that point is not valid
      */
     public PublicKey(ECDomainParameters curveParameters, ECPoint point) throws SecurityException {
         if (point.getCurve() != curveParameters.getCurve())
@@ -92,7 +92,7 @@ public class PublicKey {
      * @param curveParameters The parameters of the elliptic curve to be used
      * @param bytes           The X9.62 encoded public key
      * @return The public key corresponding to the input bytes
-     * @throws SecurityException
+     * @throws SecurityException Throws a SecurityException if the point given is invalid (ie, not on the specified curve)
      */
     public static PublicKey fromByteArray(
             ECDomainParameters curveParameters,
@@ -107,7 +107,7 @@ public class PublicKey {
      * @param string          The X9.62 encoded public key as a string encoding a byte array
      * @param base            The base of encoded string
      * @return The public key corresponding to the input string
-     * @throws SecurityException In the event of an invalid key
+     * @throws SecurityException        In the event of an invalid key
      * @throws UnsupportedBaseException If the user is trying to convert from an unsupported base
      */
     public static PublicKey fromString(
@@ -139,12 +139,12 @@ public class PublicKey {
     /**
      * Convert the elliptic curve point to a string representing a X9.62 compressed byte array encoding with the given base
      *
-     * @param base Base to use when encoding
+     * @param radix Base to use when encoding
      * @return A string representing the compressed X9.62 byte array encoding
-     * @throws UnsupportedBaseException
+     * @throws UnsupportedBaseException Thrown when the specified base is not supported
      */
-    public String toString(int base) throws UnsupportedBaseException {
-        return byteArrayToBaseEncodedString(toByteArray(), base);
+    public String toString(int radix) throws UnsupportedBaseException {
+        return byteArrayToBaseEncodedString(toByteArray(), radix);
     }
 
     /**
@@ -153,7 +153,7 @@ public class PublicKey {
      * @param base       Base to use when encoding
      * @param compressed Whether to use compression or not when constructing the byte array
      * @return A string representing the X9.62 byte array encoding
-     * @throws UnsupportedBaseException
+     * @throws UnsupportedBaseException Thrown when the specified base is not supported
      */
     public String toString(int base, boolean compressed) throws UnsupportedBaseException {
         return byteArrayToBaseEncodedString(toByteArray(compressed), base);
@@ -170,25 +170,25 @@ public class PublicKey {
     }
 
     private static class TimeStampAndNonce {
-        public final byte[] timeStampBytes;
-        public final byte[] nonceBytes;
+        final byte[] timeStampBytes;
+        final byte[] nonceBytes;
 
-        public TimeStampAndNonce(long timeStamp, long nonce) {
+        TimeStampAndNonce(long timeStamp, long nonce) {
             this.timeStampBytes = longToBytes(timeStamp);
             this.nonceBytes = longToBytes(nonce);
         }
     }
 
     private static class DeserializedSignature {
-        public final BigInteger r;
-        public final BigInteger s;
-        public final byte recover;
-        public final TimeStampAndNonce timeStampAndNonce;
+        final BigInteger r;
+        final BigInteger s;
+        final byte recover;
+        final TimeStampAndNonce timeStampAndNonce;
 
-        public DeserializedSignature(byte[] signature) {
+        DeserializedSignature(byte[] signature) {
             try (ASN1InputStream decoder = new ASN1InputStream(signature)) {
-                DLSequence sequence = (DLSequence) decoder.readObject();
-                int length = sequence.toArray().length;
+                final DLSequence sequence = (DLSequence) decoder.readObject();
+                final int length = sequence.toArray().length;
                 this.r = ((ASN1Integer) sequence.getObjectAt(0)).getValue();
                 this.s = ((ASN1Integer) sequence.getObjectAt(1)).getValue();
                 this.recover = (length >= 3) ? (byte) ((ASN1Integer) sequence.getObjectAt(2)).getValue().intValue()
@@ -197,14 +197,10 @@ public class PublicKey {
                         new TimeStampAndNonce(
                                 ((ASN1Integer) sequence.getObjectAt(3)).getValue().longValue(),
                                 ((ASN1Integer) sequence.getObjectAt(4)).getValue().longValue()) : null;
-                // TODO: Test this sad path
-                if (length == 4) {
+                if (length == 4)
                     throw new SecurityException("Signature cannot specify a time stamp without a nonce");
-                }
-                // TODO: Test this sad path
-                if (length > 5) {
+                if (length > 5)
                     throw new SecurityException("Signature cannot have more than 5 entries");
-                }
             } catch (Throwable e) {
                 throw new SecurityException(e);
             }
@@ -218,26 +214,23 @@ public class PublicKey {
      * @param yEven           Whether the Y coordinate is even or not
      * @param xCoordinate     The X coordinate of the curve point to be computed
      * @return The elliptic curve point given the specified curve parameters that has the appropriate X coordinate and Y coordinate
-     * @throws SecurityException
+     * @throws SecurityException Thrown when the specified point is invalid (ie, not on the given curve)
      */
     private static ECPoint computePoint(ECDomainParameters curveParameters, boolean yEven, BigInteger xCoordinate)
             throws SecurityException {
-        int bits = curveParameters.getN().bitLength();
-        if (bits % 8 != 0) {
-            throw new SecurityException("Curve does not have an even number of bytes");
-        }
-        int curveLength = bits / 8;
-        byte[] raw = xCoordinate.toByteArray();
-        byte[] input = new byte[curveLength + 1];
+        final int bitCount = curveParameters.getN().bitLength();
+        if (bitCount % 8 != 0)
+            throw new SecurityException(String.format("Curve does not have an even number of bytes (number of bits is: %d)", bitCount));
+        final int curveLength = bitCount / 8;
+        final byte[] raw = xCoordinate.toByteArray();
+        final byte[] input = new byte[curveLength + 1];
         if (raw.length > curveLength) {
-            int zeros = countLeadingZeroBytes(raw);
-            if (raw.length - zeros > curveLength) {
+            final int zeros = countLeadingZeroBytes(raw);
+            if (raw.length - zeros > curveLength)
                 throw new SecurityException("X Coordinate has more bytes than curve length");
-            }
             System.arraycopy(raw, zeros, input, curveLength - (raw.length - zeros) + 1, raw.length - zeros);
-        } else {
+        } else
             System.arraycopy(raw, 0, input, curveLength - raw.length + 1, raw.length);
-        }
         input[0] = (byte) (yEven ? 0x02 : 0x03);
         try {
             return curveParameters.getCurve().decodePoint(input);
@@ -246,8 +239,6 @@ public class PublicKey {
         }
     }
 
-    // TODO: test when this is false
-
     /**
      * Recovers a {@code PublicKey}, given a hash, from an extended ECDSA signature that includes a recovery byte
      *
@@ -255,22 +246,22 @@ public class PublicKey {
      * @param hash            The hash of the data that has been signed
      * @param signature       An extended ECDSA signature including a recovery byte
      * @return The public key recovered from the signature
+     * @throws SecurityException Thrown when there is an invalid recovery byte
      */
-    private static PublicKey recoverPublicKeyFromHash(
+    public static PublicKey recoverPublicKeyWithHash(
             ECDomainParameters curveParameters,
             byte[] hash,
             byte[] signature) throws SecurityException {
         DeserializedSignature sig = new DeserializedSignature(signature);
-        if (!(0x1B <= sig.recover && sig.recover <= 0x1E)) {
+        if (!(0x1B <= sig.recover && sig.recover <= 0x1E))
             throw new SecurityException("Invalid recovery byte");
-        }
-        boolean yEven = ((sig.recover - 0x1B) & 1) == 0;
-        boolean isSecondKey = (((sig.recover - 0x1B) >> 1) & 1) == 1;
-        BigInteger n = curveParameters.getN();
-        ECPoint kp = computePoint(curveParameters, yEven, isSecondKey ? sig.r.add(n) : sig.r);
-        BigInteger eInverse = n.subtract(new BigInteger(1, hash));
-        BigInteger rInverse = sig.r.modInverse(n);
-        ECPoint recoveredPointCandidate =
+        final boolean yEven = ((sig.recover - 0x1B) & 1) == 0;
+        final boolean isSecondKey = (((sig.recover - 0x1B) >> 1) & 1) == 1;
+        final BigInteger n = curveParameters.getN();
+        final ECPoint kp = computePoint(curveParameters, yEven, isSecondKey ? sig.r.add(n) : sig.r);
+        final BigInteger eInverse = n.subtract(new BigInteger(1, hash));
+        final BigInteger rInverse = sig.r.modInverse(n);
+        final ECPoint recoveredPointCandidate =
                 ECAlgorithms
                         .sumOfTwoMultiplies(curveParameters.getG(), eInverse, kp, sig.s)
                         .multiply(rInverse)
@@ -286,16 +277,16 @@ public class PublicKey {
      * @param signature       An extended ECDSA signature including a recovery byte
      * @param hashDigest      The hashing digest to use to generate the hash that was signed
      * @return A recovered public key
-     * @throws SecurityException
+     * @throws SecurityException Thrown when the recovered elliptic curve point is not on the specified curve
      */
     public static PublicKey recoverPublicKey(
             ECDomainParameters curveParameters,
             byte[] data,
             byte[] signature,
             GeneralDigest hashDigest) throws SecurityException {
-        GeneralDigest freshHashDigest = freshDigestFromDigest(hashDigest);
-        byte[] hash = new byte[freshHashDigest.getDigestSize()];
-        DeserializedSignature sig = new DeserializedSignature(signature);
+        final GeneralDigest freshHashDigest = freshDigestFromDigest(hashDigest);
+        final byte[] hash = new byte[freshHashDigest.getDigestSize()];
+        final DeserializedSignature sig = new DeserializedSignature(signature);
         if (sig.timeStampAndNonce != null) {
             freshHashDigest.update(sig.timeStampAndNonce.timeStampBytes, 0,
                     sig.timeStampAndNonce.timeStampBytes.length);
@@ -304,7 +295,7 @@ public class PublicKey {
         }
         freshHashDigest.update(data, 0, data.length);
         freshHashDigest.doFinal(hash, 0);
-        return recoverPublicKeyFromHash(curveParameters, hash, signature);
+        return recoverPublicKeyWithHash(curveParameters, hash, signature);
     }
 
     /**
@@ -314,7 +305,7 @@ public class PublicKey {
      * @param data            The data that is to be SHA-256 hashed and signed
      * @param signature       An extended ECDSA signature including a recovery byte
      * @return A recovered public key
-     * @throws SecurityException
+     * @throws SecurityException Thrown when the recovered elliptic curve point is not on the specified curve or the signature is otherwise incorrectly formatted
      */
     public static PublicKey recoverPublicKey(
             ECDomainParameters curveParameters,
@@ -328,7 +319,7 @@ public class PublicKey {
             String string,
             byte[] signature,
             GeneralDigest hashDigest) throws SecurityException {
-        return recoverPublicKey(curveParameters, stringToUTF8Bytes(string),signature, hashDigest);
+        return recoverPublicKey(curveParameters, stringToUTF8Bytes(string), signature, hashDigest);
     }
 
     public static PublicKey recoverPublicKeyFromSignedUTF8String(
@@ -344,13 +335,12 @@ public class PublicKey {
      * @param hash      A hashed value that has been signed
      * @param signature An ECDSA signature
      * @return Whether the signature is valid
-     * @throws SecurityException
+     * @throws SecurityException If there is an invalid recovery byte
      */
     private boolean verifySignatureFromHash(byte[] hash, byte[] signature) throws SecurityException {
         DeserializedSignature sig = new DeserializedSignature(signature);
-        if (sig.recover != 0) {
-            return this.equals(recoverPublicKeyFromHash(this.curveParameters, hash, signature));
-        }
+        if (sig.recover != 0)
+            return this.equals(recoverPublicKeyWithHash(this.curveParameters, hash, signature));
         return verifier.verifySignature(hash, sig.r, sig.s);
     }
 
@@ -361,13 +351,13 @@ public class PublicKey {
      * @param signature  Signature of the hashed data
      * @param hashDigest The hashing digest to use to generate the hash to check against the signature
      * @return Whether the signature is valid
-     * @throws SecurityException
+     * @throws SecurityException If the signature cannot be safely deserialized or there is an invalid recovery byte
      */
     public boolean verifySignature(byte[] data, byte[] signature, GeneralDigest hashDigest)
             throws SecurityException {
-        GeneralDigest freshHashDigest = freshDigestFromDigest(hashDigest);
-        byte[] hash = new byte[hashDigest.getDigestSize()];
-        DeserializedSignature sig = new DeserializedSignature(signature);
+        final GeneralDigest freshHashDigest = freshDigestFromDigest(hashDigest);
+        final byte[] hash = new byte[hashDigest.getDigestSize()];
+        final DeserializedSignature sig = new DeserializedSignature(signature);
         if (sig.timeStampAndNonce != null) {
             freshHashDigest.update(sig.timeStampAndNonce.timeStampBytes, 0,
                     sig.timeStampAndNonce.timeStampBytes.length);
@@ -385,7 +375,7 @@ public class PublicKey {
      * @param data      Data to be hashed
      * @param signature Signature of the hashed data
      * @return Whether the signature is valid
-     * @throws SecurityException
+     * @throws SecurityException When a signature cannot be properly deserialized or contains an invalid recovery byte
      */
     public boolean verifySignature(byte[] data, byte[] signature)
             throws SecurityException {
@@ -399,7 +389,7 @@ public class PublicKey {
      * @param signature  Signature of the hashed string
      * @param hashDigest The hashing digest to use to generate the hash to check against the signature
      * @return Whether the signature is valid
-     * @throws SecurityException
+     * @throws SecurityException If the string is not a properly formatted ASN.1 signature
      */
     public boolean verifySignedUTF8String(String string, byte[] signature, GeneralDigest hashDigest)
             throws SecurityException {
@@ -412,7 +402,7 @@ public class PublicKey {
      * @param string    The string to be hashed
      * @param signature Signature of the hashed string
      * @return Whether the signature is valid
-     * @throws SecurityException
+     * @throws SecurityException If the string is not a properly formatted ASN.1 signature
      */
     public boolean verifySignedUTF8String(String string, byte[] signature)
             throws SecurityException {

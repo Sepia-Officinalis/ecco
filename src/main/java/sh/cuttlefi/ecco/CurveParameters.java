@@ -20,7 +20,6 @@ public class CurveParameters {
                 x9ECParameters.getH());
     }
 
-    // TODO: Add in the WebCrypto Curves
     public static final ECDomainParameters secp256k1 = getCurveParametersByName("secp256k1");
     public static final ECDomainParameters secp256r1 = getCurveParametersByName("secp256r1");
 }

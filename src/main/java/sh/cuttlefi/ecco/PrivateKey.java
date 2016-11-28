@@ -20,7 +20,7 @@ import static javax.xml.bind.DatatypeConverter.printHexBinary;
 import static sh.cuttlefi.ecco.impl.codec.BaseConvert.byteArrayToBaseEncodedString;
 import static sh.cuttlefi.ecco.impl.Utils.*;
 
-public class PrivateKey {
+final public class PrivateKey {
     private final BigInteger d;
     private final ECDomainParameters curveParameters;
     private final PublicKey publicKey;
@@ -66,9 +66,8 @@ public class PrivateKey {
             ECDomainParameters curveParameters,
             String string,
             int radix) throws UnsupportedBaseException {
-        if (radix == 10) {
+        if (radix == 10)
             return new PrivateKey(curveParameters, new BigInteger(string, 10));
-        }
         return fromByteArray(curveParameters, BaseConvert.baseEncodedStringToByteArray(string, radix));
     }
 
@@ -78,7 +77,7 @@ public class PrivateKey {
      * @return A byte array representing the coefficient of the private key
      */
     public byte[] toByteArray() {
-        byte[] data = d.toByteArray();
+        final byte[] data = d.toByteArray();
         return Arrays.copyOfRange(data, countLeadingZeroBytes(data), data.length);
     }
 
@@ -90,9 +89,8 @@ public class PrivateKey {
      * @throws UnsupportedBaseException Thrown if the specified radix is not a supported base for encoding strings
      */
     public String toString(int radix) throws UnsupportedBaseException {
-        if (radix == 10) {
+        if (radix == 10)
             return d.toString(10);
-        }
         return byteArrayToBaseEncodedString(toByteArray(), radix);
     }
 
@@ -126,8 +124,8 @@ public class PrivateKey {
     private HMacDSAKCalculator deterministicKGenerator(
             byte[] hash,
             GeneralDigest hashDigest) throws SecurityException {
-        GeneralDigest freshHashDigest = freshDigestFromDigest(hashDigest);
-        HMacDSAKCalculator generator = new HMacDSAKCalculator(freshHashDigest);
+        final GeneralDigest freshHashDigest = freshDigestFromDigest(hashDigest);
+        final HMacDSAKCalculator generator = new HMacDSAKCalculator(freshHashDigest);
         generator.init(curveParameters.getN(), d, hash);
         return generator;
     }
@@ -141,10 +139,10 @@ public class PrivateKey {
      * @return The recovery byte, following the convention in BitCoin
      */
     private byte computeRecoveryByte(ECPoint kp, BigInteger r, BigInteger s, boolean canonical) {
-        BigInteger n = curveParameters.getN();
-        boolean bigR = r.compareTo(n) >= 0;
-        boolean bigS = canonical && s.add(s).compareTo(n) >= 0;
-        boolean yOdd = kp.getYCoord().toBigInteger().testBit(0);
+        final BigInteger n = curveParameters.getN();
+        final boolean bigR = r.compareTo(n) >= 0;
+        final boolean bigS = canonical && s.add(s).compareTo(n) >= 0;
+        final boolean yOdd = kp.getYCoord().toBigInteger().testBit(0);
         return (byte) (0x1B + ((bigS != yOdd) ? 1 : 0) + (bigR ? 2 : 0));
     }
 
@@ -164,11 +162,11 @@ public class PrivateKey {
      * A configuration that is read when constructing ECDSA signatures
      */
     public static class SignatureConfig {
-        public final boolean recover;
-        public final TimeStampAndNonce timeStampAndNonce;
-        public final boolean canonical;
-        public final GeneralDigest rfc6979Digest;
-        public final GeneralDigest messageDigest;
+        final boolean recover;
+        final TimeStampAndNonce timeStampAndNonce;
+        final boolean canonical;
+        final GeneralDigest rfc6979Digest;
+        final GeneralDigest messageDigest;
 
         public SignatureConfig(
                 boolean recover,
@@ -209,10 +207,9 @@ public class PrivateKey {
         }
 
         public SignatureConfigBuilder setTimeStampAndNonce(boolean timeStampAndNonce) {
-            if (timeStampAndNonce && !recover) {
+            if (timeStampAndNonce && !recover)
                 throw new IllegalArgumentException(
                         "Cannot configure signatures to include a timestamp and nonce without a recovery byte");
-            }
             this.timeStampAndNonce = timeStampAndNonce;
             return this;
         }
@@ -246,28 +243,26 @@ public class PrivateKey {
 
     private byte[] signHash(byte[] hash, SignatureConfig config)
             throws SecurityException {
-        if (hash.length * 8 > curveParameters.getN().bitLength()) {
+        if (hash.length * 8 > curveParameters.getN().bitLength())
             throw new SecurityException("Hash must not have more bytes than the curve specifies");
-        }
-        HMacDSAKCalculator rng = deterministicKGenerator(hash, config.rfc6979Digest);
-        BigInteger z = new BigInteger(1, hash);
+        final HMacDSAKCalculator rng = deterministicKGenerator(hash, config.rfc6979Digest);
+        final BigInteger z = new BigInteger(1, hash);
         while (true) {
-            BigInteger k = rng.nextK();
-            BigInteger n = curveParameters.getN();
-            ECPoint kp = curveParameters.getG().multiply(k).normalize();
-            BigInteger r = kp.getXCoord().toBigInteger().mod(n);
+            final BigInteger k = rng.nextK();
+            final BigInteger n = curveParameters.getN();
+            final ECPoint kp = curveParameters.getG().multiply(k).normalize();
+            final BigInteger r = kp.getXCoord().toBigInteger().mod(n);
             if (r.equals(BigInteger.ZERO)) continue;
-            BigInteger s_ = k.modInverse(n).multiply(r.multiply(d).add(z)).mod(n);
+            final BigInteger s_ = k.modInverse(n).multiply(r.multiply(d).add(z)).mod(n);
             if (s_.equals(BigInteger.ZERO)) continue;
-            BigInteger s = config.canonical && (s_.add(s_).compareTo(n) >= 0) ? n.subtract(s_) : s_;
+            final BigInteger s = config.canonical && (s_.add(s_).compareTo(n) >= 0) ? n.subtract(s_) : s_;
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             try {
-                DERSequenceGenerator derSequenceGenerator = new DERSequenceGenerator(bos);
+                final DERSequenceGenerator derSequenceGenerator = new DERSequenceGenerator(bos);
                 derSequenceGenerator.addObject(new ASN1Integer(r));
                 derSequenceGenerator.addObject(new ASN1Integer(s));
-                if (config.recover || config.timeStampAndNonce != null) {
+                if (config.recover || config.timeStampAndNonce != null)
                     derSequenceGenerator.addObject(new ASN1Integer(computeRecoveryByte(kp, r, s_, config.canonical)));
-                }
                 if (config.timeStampAndNonce != null) {
                     derSequenceGenerator.addObject(new ASN1Integer(config.timeStampAndNonce.timeStamp));
                     derSequenceGenerator.addObject(new ASN1Integer(config.timeStampAndNonce.nonce));
@@ -283,11 +278,11 @@ public class PrivateKey {
     public byte[] sign(byte[] data, SignatureConfig config)
             throws SecurityException {
         GeneralDigest hashDigest = freshDigestFromDigest(config.messageDigest);
-        byte[] hash = new byte[hashDigest.getDigestSize()];
+        final byte[] hash = new byte[hashDigest.getDigestSize()];
         if (config.timeStampAndNonce != null) {
-            byte[] timeStampBytes = longToBytes(config.timeStampAndNonce.timeStamp);
+            final byte[] timeStampBytes = longToBytes(config.timeStampAndNonce.timeStamp);
             hashDigest.update(timeStampBytes, 0, timeStampBytes.length);
-            byte[] nonceBytes = longToBytes(config.timeStampAndNonce.nonce);
+            final byte[] nonceBytes = longToBytes(config.timeStampAndNonce.nonce);
             hashDigest.update(nonceBytes, 0, nonceBytes.length);
         }
         hashDigest.update(data, 0, data.length);
@@ -313,9 +308,8 @@ public class PrivateKey {
         if (!(curveParameters.getCurve().equals(publicKey.curveParameters.getCurve())
                 && curveParameters.getG().equals(publicKey.curveParameters.getG())
                 && curveParameters.getN().equals(publicKey.curveParameters.getN())
-                && curveParameters.getH().equals(publicKey.curveParameters.getH()))) {
+                && curveParameters.getH().equals(publicKey.curveParameters.getH())))
             throw new SecurityException("Public key does not have the same curve parameters as private key");
-        }
         return publicKey.point.multiply(this.d).getEncoded(true);
     }
 
@@ -324,7 +318,7 @@ public class PrivateKey {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        PrivateKey privateKey = (PrivateKey) o;
+        final PrivateKey privateKey = (PrivateKey) o;
 
         return d.equals(privateKey.d)
                 && curveParameters.getCurve().equals(privateKey.curveParameters.getCurve())

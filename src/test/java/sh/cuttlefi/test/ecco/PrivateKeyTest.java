@@ -1,4 +1,4 @@
-package sh.cuttlefi.ecco.test;
+package sh.cuttlefi.test.ecco;
 
 import org.bouncycastle.crypto.digests.SHA256Digest;
 import org.junit.Test;
@@ -8,9 +8,11 @@ import sh.cuttlefi.ecco.CurveParameters;
 import sh.cuttlefi.ecco.PrivateKey;
 import sh.cuttlefi.ecco.PublicKey;
 import sh.cuttlefi.ecco.exceptions.UnsupportedBaseException;
+import sh.cuttlefi.ecco.impl.codec.BaseConvert;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.math.BigInteger;
 
 import static sh.cuttlefi.ecco.CurveParameters.secp256k1;
 import static sh.cuttlefi.ecco.CurveParameters.secp256r1;
@@ -25,23 +27,23 @@ public class PrivateKeyTest {
         Assert.assertEquals(
                 "c6b7f6bfe5bb19b1e390e55ed4ba5df8af6068d0eb89379a33f9c19aacf6c08c",
                 PrivateKey.fromString(
-                secp256k1,
-                "c6b7f6bfe5bb19b1e390e55ed4ba5df8af6068d0eb89379a33f9c19aacf6c08c",
-                16).toString(16));
+                        secp256k1,
+                        "c6b7f6bfe5bb19b1e390e55ed4ba5df8af6068d0eb89379a33f9c19aacf6c08c",
+                        16).toString(16));
         Assert.assertEquals(PrivateKey.fromString(
                 secp256k1,
                 "c6b7f6bfe5bb19b1e390e55ed4ba5df8af6068d0eb89379a33f9c19aacf6c08c",
                 16).toString(),
                 "c6b7f6bfe5bb19b1e390e55ed4ba5df8af6068d0eb89379a33f9c19aacf6c08c");
         Assert.assertEquals(PrivateKey.fromString(
-                        secp256k1,
-                        "01",
-                        16).toString(),
+                secp256k1,
+                "01",
+                16).toString(),
                 "01");
         Assert.assertEquals(PrivateKey.fromString(
-                        secp256k1,
-                        "01",
-                        10).toString(10),
+                secp256k1,
+                "01",
+                10).toString(10),
                 "1");
     }
 
@@ -99,6 +101,7 @@ public class PrivateKeyTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testSetTimeStampAndNonceSignatureConfigSadPath() throws Exception {
+        //noinspection ConstantConditions
         new PrivateKey.SignatureConfig(false, true, true, new SHA256Digest(), new SHA256Digest());
     }
 
@@ -151,7 +154,7 @@ public class PrivateKeyTest {
     }
 
     @Test
-    public void testDeterministicSignatures() throws Exception {
+    public void testDeterministicSignatureNoRecover() throws Exception {
         PrivateKey privateKey = PrivateKey.fromString(
                 secp256k1,
                 "22c49372a7506d162e6551fca36eb59235a9252c7f55610b8d0859d8752235a9",
@@ -159,11 +162,120 @@ public class PrivateKeyTest {
         String input = "コトドリ属（コトドリぞく、学名 Menura）はコトドリ上科コトドリ科 Menuridae に属する鳥の属の一つ。コトドリ科は単型である。";
         byte[] signatureBytes = privateKey.signUTF8String(input,
                 new PrivateKey.SignatureConfigBuilder()
-                .setRecover(false)
-                .build());
+                        .setRecover(false)
+                        .build());
         Assert.assertTrue(privateKey.getPublicKey().verifySignedUTF8String(input, signatureBytes));
         String signature = byteArrayToBaseEncodedString(signatureBytes, 16);
-        Assert.assertEquals(signature, "3045022100a28224c02e60f4e0a345cfc1043de9be408301393eec9225ab849d6bed8b794302205d09d76f6ae27094c005883d41e7059bb14afb0d9b61f9c051dea384b5048834");
+        Assert.assertEquals("3045022100a28224c02e60f4e0a345cfc1043de9be408301393eec9225ab849d6bed8b794302205d09d76f6ae27094c005883d41e7059bb14afb0d9b61f9c051dea384b5048834", signature);
+    }
+
+    @Test
+    public void testDeterministicSignatureWithRecover() throws Exception {
+        PrivateKey privateKey = PrivateKey.fromString(
+                secp256k1,
+                "22c49372a7506d162e6551fca36eb59235a9252c7f55610b8d0859d8752235a9",
+                16);
+        String input = "コトドリ属（コトドリぞく、学名 Menura）はコトドリ上科コトドリ科 Menuridae に属する鳥の属の一つ。コトドリ科は単型である。";
+        byte[] signatureBytes = privateKey.signUTF8String(input,
+                new PrivateKey.SignatureConfigBuilder()
+                        .setRecover(true)
+                        .setTimeStampAndNonce(false)
+                        .build());
+        Assert.assertTrue(privateKey.getPublicKey().verifySignedUTF8String(input, signatureBytes));
+        String signature = byteArrayToBaseEncodedString(signatureBytes, 16);
+        Assert.assertEquals("3048022100a28224c02e60f4e0a345cfc1043de9be408301393eec9225ab849d6bed8b794302205d09d76f6ae27094c005883d41e7059bb14afb0d9b61f9c051dea384b504883402011b", signature);
+    }
+
+    @Test
+    public void testDeterministicSignatureWithRecoverTestCanonical() throws Exception {
+        PrivateKey privateKey = PrivateKey.fromString(
+                secp256k1,
+                "22c49372a7506d162e6551fca36eb59235a9252c7f55610b8d0859d8752235a9",
+                16);
+        String input = "コトドリ属（コトドリぞく、学名 Menura）はコトドリ上科コトドリ科 Menuridae に属する鳥の属の一つ。コトドリ科は単型である。XXX";
+        byte[] canonicalSignatureBytes = privateKey.signUTF8String(input,
+                new PrivateKey.SignatureConfigBuilder()
+                        .setRecover(true)
+                        .setTimeStampAndNonce(false)
+                        .setCanonical(true)
+                        .build());
+        Assert.assertTrue(privateKey.getPublicKey().verifySignedUTF8String(input, canonicalSignatureBytes));
+        String canonicalSignature = byteArrayToBaseEncodedString(canonicalSignatureBytes, 16);
+        byte[] nonCanonicalSignatureBytes = privateKey.signUTF8String(input,
+                new PrivateKey.SignatureConfigBuilder()
+                        .setRecover(true)
+                        .setTimeStampAndNonce(false)
+                        .setCanonical(false)
+                        .build());
+        Assert.assertTrue(privateKey.getPublicKey().verifySignedUTF8String(input, nonCanonicalSignatureBytes));
+        String nonCanonicalSignature = byteArrayToBaseEncodedString(nonCanonicalSignatureBytes, 16);
+        Assert.assertFalse(canonicalSignature.equals(nonCanonicalSignature));
+    }
+
+    @Test
+    public void testDeterministicSignatureWithRecoverByteArray() throws Exception {
+        PrivateKey privateKey = PrivateKey.fromByteArray(
+                secp256k1,
+                BaseConvert.baseEncodedStringToByteArray("22c49372a7506d162e6551fca36eb59235a9252c7f55610b8d0859d8752235a9", 16));
+        String input = "コトドリ属（コトドリぞく、学名 Menura）はコトドリ上科コトドリ科 Menuridae に属する鳥の属の一つ。コトドリ科は単型である。";
+        byte[] signatureBytes = privateKey.signUTF8String(input,
+                new PrivateKey.SignatureConfigBuilder()
+                        .setRecover(true)
+                        .setTimeStampAndNonce(false)
+                        .build());
+        Assert.assertTrue(privateKey.getPublicKey().verifySignedUTF8String(input, signatureBytes));
+        String signature = byteArrayToBaseEncodedString(signatureBytes, 16);
+        Assert.assertEquals("3048022100a28224c02e60f4e0a345cfc1043de9be408301393eec9225ab849d6bed8b794302205d09d76f6ae27094c005883d41e7059bb14afb0d9b61f9c051dea384b504883402011b", signature);
+    }
+
+    @Test
+    public void testDeterministicSignatureWithRecoverByteArrayBackAndForth() throws Exception {
+        PrivateKey privateKey =
+                PrivateKey.fromByteArray(
+                        secp256k1,
+                        PrivateKey.fromByteArray(
+                                secp256k1,
+                                BaseConvert.baseEncodedStringToByteArray("22c49372a7506d162e6551fca36eb59235a9252c7f55610b8d0859d8752235a9", 16))
+                                .toByteArray());
+        String input = "コトドリ属（コトドリぞく、学名 Menura）はコトドリ上科コトドリ科 Menuridae に属する鳥の属の一つ。コトドリ科は単型である。";
+        byte[] signatureBytes = privateKey.signUTF8String(input,
+                new PrivateKey.SignatureConfigBuilder()
+                        .setRecover(true)
+                        .setTimeStampAndNonce(false)
+                        .build());
+        Assert.assertTrue(privateKey.getPublicKey().verifySignedUTF8String(input, signatureBytes));
+        String signature = byteArrayToBaseEncodedString(signatureBytes, 16);
+        Assert.assertEquals("3048022100a28224c02e60f4e0a345cfc1043de9be408301393eec9225ab849d6bed8b794302205d09d76f6ae27094c005883d41e7059bb14afb0d9b61f9c051dea384b504883402011b", signature);
+    }
+
+    @Test
+    public void testDeterministicSignatureWithRecoverConstructor() throws Exception {
+        PrivateKey privateKey = new PrivateKey(
+                secp256k1,
+                new BigInteger(1, BaseConvert.baseEncodedStringToByteArray("22c49372a7506d162e6551fca36eb59235a9252c7f55610b8d0859d8752235a9", 16)));
+        String input = "コトドリ属（コトドリぞく、学名 Menura）はコトドリ上科コトドリ科 Menuridae に属する鳥の属の一つ。コトドリ科は単型である。";
+        byte[] signatureBytes = privateKey.signUTF8String(input,
+                new PrivateKey.SignatureConfigBuilder()
+                        .setRecover(true)
+                        .setTimeStampAndNonce(false)
+                        .build());
+        Assert.assertTrue(privateKey.getPublicKey().verifySignedUTF8String(input, signatureBytes));
+        String signature = byteArrayToBaseEncodedString(signatureBytes, 16);
+        Assert.assertEquals("3048022100a28224c02e60f4e0a345cfc1043de9be408301393eec9225ab849d6bed8b794302205d09d76f6ae27094c005883d41e7059bb14afb0d9b61f9c051dea384b504883402011b", signature);
+    }
+
+    @Test
+    public void testDeterministicSignatureWithRecoverBigIntegerONE() throws Exception {
+        PrivateKey privateKey = new PrivateKey(secp256k1, BigInteger.ONE);
+        String input = "コトドリ属（コトドリぞく、学名 Menura）はコトドリ上科コトドリ科 Menuridae に属する鳥の属の一つ。コトドリ科は単型である。";
+        byte[] signatureBytes = privateKey.signUTF8String(input,
+                new PrivateKey.SignatureConfigBuilder()
+                        .setRecover(true)
+                        .setTimeStampAndNonce(false)
+                        .build());
+        Assert.assertTrue(privateKey.getPublicKey().verifySignedUTF8String(input, signatureBytes));
+        String signature = byteArrayToBaseEncodedString(signatureBytes, 16);
+        Assert.assertEquals("3048022100972b6487837a509cc781ad73fa07c92bbbb65fb8aa35de97a341a0dcdb5244ba022031d27cbe8d4998806862d4df7a75b5b4a102db13aea1b51a080d13f45fda57a402011c", signature);
     }
 
     @Test
@@ -264,7 +376,6 @@ public class PrivateKeyTest {
                         message,
                         baseEncodedStringToByteArray(data, 16)));
     }
-
 
 
 }

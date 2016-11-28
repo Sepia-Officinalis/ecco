@@ -14,14 +14,14 @@ public class BaseConvert {
      * Convert a string to a byte array it encodes
      *
      * @param string A string representing an array of bytes
-     * @param base   The base the string is encoded with
+     * @param radix  The base the string is encoded with
      * @return The byte array the string represents
      * @throws UnsupportedBaseException Thrown if an unsupported base is handed as an argument
      */
     public static byte[] baseEncodedStringToByteArray(
             String string,
-            int base) throws UnsupportedBaseException {
-        switch (base) {
+            int radix) throws UnsupportedBaseException {
+        switch (radix) {
             case 16:
                 return parseHexBinary(string);
             case 64:
@@ -35,14 +35,14 @@ public class BaseConvert {
      * Convert a byte array into a encoded string
      *
      * @param bytes The bytes to encode as a string
-     * @param base  The base of the encoding
+     * @param radix The base of the encoding
      * @return An encoded string
      * @throws UnsupportedBaseException Thrown if an unsupported base is handed as an argument
      */
     public static String byteArrayToBaseEncodedString(
             byte[] bytes,
-            int base) throws UnsupportedBaseException {
-        switch (base) {
+            int radix) throws UnsupportedBaseException {
+        switch (radix) {
             case 16:
                 return printHexBinary(bytes).toLowerCase();
             case 64:
