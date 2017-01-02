@@ -65,6 +65,10 @@ public class PublicKeyTest {
                 PublicKey.fromByteArray(secp256k1, PublicKey.fromString(secp256k1,
                         "0400bf0e38b86329f84ea90972e0f901d5ea0145f1ebac8c50fded77796d7a70e1be9e001b7ece071fb3986b5e96699fe28dbdeec8956682da78a5f6a115b9f14c",
                         16).toByteArray()).toString(16, false));
+        Assert.assertEquals("0400bf0e38b86329f84ea90972e0f901d5ea0145f1ebac8c50fded77796d7a70e1be9e001b7ece071fb3986b5e96699fe28dbdeec8956682da78a5f6a115b9f14c",
+                PublicKey.fromUncompressedByteArray(secp256k1, PublicKey.fromString(secp256k1,
+                        "0400bf0e38b86329f84ea90972e0f901d5ea0145f1ebac8c50fded77796d7a70e1be9e001b7ece071fb3986b5e96699fe28dbdeec8956682da78a5f6a115b9f14c",
+                        16).toByteArray(false)).toString(16, false));
         Assert.assertEquals(
                 "0400bf0e38b86329f84ea90972e0f901d5ea0145f1ebac8c50fded77796d7a70e1be9e001b7ece071fb3986b5e96699fe28dbdeec8956682da78a5f6a115b9f14c",
                 PublicKey.fromByteArray(secp256k1, PublicKey.fromString(secp256k1,

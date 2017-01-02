@@ -101,6 +101,17 @@ final public class PublicKey {
     }
 
     /**
+     * Recover an uncompressed X9.62 encoded public key from an array of bytes
+     */
+    public static PublicKey fromUncompressedByteArray(
+            ECDomainParameters curveParameters,
+            byte[] bytes) throws SecurityException {
+        if (bytes[0] != 0x04)
+            throw new SecurityException("Expected first bytes of array to be 0x04: " + printHexBinary(bytes));
+        return new PublicKey(curveParameters, curveParameters.getCurve().decodePoint(bytes));
+    }
+
+    /**
      * Recover an X9.62 encoded public key from a string encoding an array of bytes
      *
      * @param curveParameters The parameters of the elliptic curve to be used

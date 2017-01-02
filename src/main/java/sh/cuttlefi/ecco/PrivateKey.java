@@ -173,7 +173,7 @@ final public class PrivateKey {
                 boolean timeStampAndNonce,
                 boolean canonical,
                 GeneralDigest rfc6979Digest,
-                GeneralDigest messageDigest) {
+                GeneralDigest messageDigest) throws IllegalArgumentException {
             if (timeStampAndNonce && !recover) {
                 throw new IllegalArgumentException(
                         "Cannot configure signatures to include a timestamp and nonce without a recovery byte");
