@@ -50,6 +50,19 @@ public class Utils {
         return buffer.array();
     }
 
+    /**
+     * Convert an array of bytes to a long
+     *
+     * @param bytes Bytes of a long
+     * @return The long represented by the bytes
+     */
+    public static long bytesToLong(byte[] bytes) {
+        ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+        buffer.put(bytes);
+        buffer.flip();
+        return buffer.getLong();
+    }
+
     public static int countLeadingZeroBytes(byte[] bytes) {
         int i = -1;
         //noinspection StatementWithEmptyBody

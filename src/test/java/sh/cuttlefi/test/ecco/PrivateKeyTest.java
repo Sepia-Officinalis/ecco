@@ -377,5 +377,22 @@ public class PrivateKeyTest {
                         baseEncodedStringToByteArray(data, 16)));
     }
 
+    @Test
+    public void testTimeStampChronologicalOrder() throws Exception {
+        PrivateKey privateKey1 = PrivateKey.fromString(
+                secp256k1,
+                "22c49372a7506d162e6551fca36eb59235a9252c7f55610b8d0859d8752235a9",
+                16);
+        PrivateKey privateKey2 = PrivateKey.fromString(
+                secp256r1,
+                "22c49372a7506d162e6551fca36eb59235a9252c7f55610b8d0859d8752235a9",
+                16);
+        String message = "Moloch!";
+        Long timeStamp1 = PublicKey.getTimeStampFromSignature(privateKey1.signUTF8String(message));
+        Long timeStamp2 = PublicKey.getTimeStampFromSignature(privateKey2.signUTF8String(message));
+        Long now = System.currentTimeMillis();
+        Assert.assertTrue(timeStamp1 <= timeStamp2);
+        Assert.assertTrue(timeStamp2 <= now);
+    }
 
 }

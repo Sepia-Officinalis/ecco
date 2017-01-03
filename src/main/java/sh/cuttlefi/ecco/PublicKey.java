@@ -102,12 +102,17 @@ final public class PublicKey {
 
     /**
      * Recover an uncompressed X9.62 encoded public key from an array of bytes
+     *
+     * @param curveParameters The parameters of the elliptic curve to be used
+     * @param bytes           The X9.62 encoded public key
+     * @return The public key corresponding to the input bytes
+     * @throws SecurityException Throws a SecurityException if the point given is invalid (ie, not on the specified curve or compressed)
      */
     public static PublicKey fromUncompressedByteArray(
             ECDomainParameters curveParameters,
             byte[] bytes) throws SecurityException {
         if (bytes[0] != 0x04)
-            throw new SecurityException("Expected first bytes of array to be 0x04: " + printHexBinary(bytes));
+            throw new SecurityException(String.format("Expected first bytes of array to be 0x04: %s", printHexBinary(bytes)));
         return new PublicKey(curveParameters, curveParameters.getCurve().decodePoint(bytes));
     }
 
@@ -216,6 +221,19 @@ final public class PublicKey {
                 throw new SecurityException(e);
             }
         }
+    }
+
+    /**
+     * Extracts the timestamp from an ASN.1 signature
+     *
+     * @param signature The signature bytes to extract the timestamp from
+     * @return The timestamp in the signature, represented as milliseconds since epoch
+     */
+    public static Long getTimeStampFromSignature(byte[] signature) {
+        final DeserializedSignature deserializedSignature = new DeserializedSignature(signature);
+        if (deserializedSignature.timeStampAndNonce == null)
+            throw new SecurityException("Signature did not contain a timestamp");
+        return bytesToLong(deserializedSignature.timeStampAndNonce.timeStampBytes);
     }
 
     /**
